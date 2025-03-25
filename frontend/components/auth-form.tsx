@@ -35,6 +35,12 @@ export function AuthForm({ isLogin }: { isLogin: boolean }) {
 
             if (response.data.access_token) {
                 Cookies.set('auth_token', response.data.access_token);
+                try {
+                    const res = await api.get('/auth/me');
+                    Cookies.set('role', res.data.role);
+                } catch (error) {
+                    return null;
+                }
                 // Получаем данные пользователя
                 const user = await getCurrentUser();
                 console.log(user.role)

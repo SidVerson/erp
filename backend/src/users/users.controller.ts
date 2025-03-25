@@ -27,7 +27,7 @@ export class UsersController {
   ) {}
 
   @Get()
-  @Roles('admin')
+  @Roles('admin', 'manager')
   async findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }

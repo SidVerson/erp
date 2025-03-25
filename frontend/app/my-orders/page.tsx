@@ -4,22 +4,18 @@ import {OrderTable} from '@/components/order-table'
 import {Order} from '@/lib/types'
 import {toast} from "sonner";
 import api from "@/lib/axios";
-import {getCurrentUser} from "@/lib/auth";
+import {getCurrentUser, logout} from "@/lib/auth";
 import {useRouter} from "next/navigation";
+import {Button} from "@/components/ui/button";
+import {LogOut} from "lucide-react";
 
 export default  function MyOrdersPage() {
     const [orders, setOrders] = useState<Order[]>([])
     const user =  getCurrentUser()
     const router = useRouter()
-
-    if (!user) {
+    const log = () => {
+        logout()
         router.push('/login')
-    }
-    if (user.role === 'admin') {
-        router.push('/admin')
-    }
-    if (user.role === 'manager') {
-        router.push('/manager')
     }
     useEffect(() => {
         const fetchOrders = async () => {
@@ -35,13 +31,16 @@ export default  function MyOrdersPage() {
 
     return (
         <div className="container py-8">
-            <h1 className="text-2xl font-bold mb-6">Мои заказы</h1>
-            
-            <OrderTable
-                data={orders}
-                hideActions
-                hideClient
-            />
-        </div>
-    )
-}
+            <div className={'flex w-full justify-between'}>
+
+                <h1 className="text-2xl font-bold mb-6">Мои заказы</h1>
+                <Button variant={'destructive'} onClick={log}><LogOut/></Button>
+            </div>
+                <OrderTable
+                    data={orders}
+                    hideActions
+                    hideClient
+                />
+            </div>
+            )
+            }

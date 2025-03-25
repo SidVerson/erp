@@ -12,5 +12,6 @@ export const getCurrentUser = async () => {
 
 export const logout = () => {
     Cookies.remove('auth_token');
+    Cookies.remove('role');
     window.location.href = '/login';
 };

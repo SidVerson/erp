@@ -6,24 +6,18 @@ import {columns} from './columns';
 import {User} from '@/lib/types';
 import api from "@/lib/axios";
 import {CreateUserDialog} from "@/components/create-user-dialog";
-import {getCurrentUser} from "@/lib/auth";
+import {logout} from "@/lib/auth";
 import {useRouter} from "next/navigation";
+import {Button} from "@/components/ui/button";
+import {LogOut} from "lucide-react";
 
 export default function AdminPage() {
-    const user =  getCurrentUser()
     const router = useRouter()
-
-    if (!user) {
+    const log = () => {
+        logout()
         router.push('/login')
     }
 
-    if (user.role === 'customer') {
-        router.push('/my-orders')
-    }
-
-    if (user.role === 'manager') {
-        router.push('/manager')
-    }
     const [users, setUsers] = useState<User[]>([]);
 
     useEffect(() => {
@@ -41,7 +35,11 @@ export default function AdminPage() {
 
     return (
         <div className="container flex flex-col gap-8 w-full">
+            <div className={'flex w-full justify-between'}>
+
             <h1 className="text-2xl font-bold">Управление пользователями</h1>
+                <Button variant={'destructive'}  onClick={log}><LogOut /></Button>
+            </div>
             <CreateUserDialog/>
             <DataTable columns={columns} data={users}/>
         </div>

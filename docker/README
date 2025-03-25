@@ -1,0 +1,8 @@
+# Собрать образы
+docker-compose build
+
+# Запустить миграции
+docker-compose run --rm migrations
+
+# Запустить систему
+docker-compose up -d

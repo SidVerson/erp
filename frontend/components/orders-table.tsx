@@ -5,6 +5,9 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '@/
 import {Order} from '@/lib/types'
 import {Button} from '@/components/ui/button'
 import {ArrowUpDown} from 'lucide-react'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import api from "@/lib/axios"
+import {toast} from "sonner"
 
 export const columns: ColumnDef<Order>[] = [
     {
@@ -28,15 +31,34 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Статус',
         cell: ({ row }) => {
             const status = row.getValue('status')
+            const orderId = row.getValue('id')
             const statusMap = {
                 pending: { label: 'Ожидает', color: 'bg-yellow-100 text-yellow-800' },
                 in_progress: { label: 'В работе', color: 'bg-blue-100 text-blue-800' },
                 completed: { label: 'Завершен', color: 'bg-green-100 text-green-800' }
             }
+
+            const handleStatusChange = async (newStatus: string) => {
+                try {
+                    await api.put(`/orders/${orderId}/status`, { status: newStatus })
+                    toast("Статус заказа обновлен")
+                    window.location.reload()
+                } catch (error) {
+                    toast.error("Ошибка при обновлении статуса")
+                }
+            }
+
             return (
-                <span className={`px-2 py-1 rounded ${statusMap[status].color}`}>
-          {statusMap[status].label}
-        </span>
+                <Select onValueChange={handleStatusChange} defaultValue={status}>
+                    <SelectTrigger className={`w-[140px] ${statusMap[status].color}`}>
+                        <SelectValue placeholder="Выберите статус" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="pending">Ожидает</SelectItem>
+                        <SelectItem value="in_progress">В работе</SelectItem>
+                        <SelectItem value="completed">Завершен</SelectItem>
+                    </SelectContent>
+                </Select>
             )
         }
     },

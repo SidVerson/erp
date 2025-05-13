@@ -93,106 +93,103 @@ export function ProductDialog({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[500px] w-full">
                 <DialogHeader>
-                    <DialogTitle>
-                        {product?.id ? 'Редактирование товара' : 'Новый товар'}
-                    </DialogTitle>
+                    <DialogTitle>{product ? 'Редактирование товара' : 'Создание нового товара'}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Наименование</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Категория</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Описание</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="supplierId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Поставщик</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 min-h-[400px] overflow-y-auto p-4">
+                        <div className="grid gap-4 py-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Название</FormLabel>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Выберите поставщика" />
-                                            </SelectTrigger>
+                                            <Input {...field} className="w-full" />
                                         </FormControl>
-                                        <SelectContent>
-                                            {suppliers.map(supplier => (
-                                                <SelectItem key={supplier.id} value={String(supplier.id)}>
-                                                    {supplier.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <FormField
-                            control={form.control}
-                            name="price"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Цена</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            {...field}
-                                            onChange={e => field.onChange(Number(e.target.value))}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                            <FormField
+                                control={form.control}
+                                name="category"
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Категория</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} className="w-full" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <div className="flex justify-end gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                            >
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Описание</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} className="w-full" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="supplierId"
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Поставщик</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Выберите поставщика" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {suppliers.map(supplier => (
+                                                    <SelectItem key={supplier.id} value={String(supplier.id)}>
+                                                        {supplier.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="price"
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Цена</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                {...field}
+                                                onChange={e => field.onChange(Number(e.target.value))}
+                                                className="w-full"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 mt-6">
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                                 Отмена
                             </Button>
                             <Button type="submit">Сохранить</Button>

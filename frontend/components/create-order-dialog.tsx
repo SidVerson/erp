@@ -59,7 +59,7 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
                     api.get('/users?role=customer'),
                     api.get('/products?includeStock=true')
                 ])
-                setClients(clientsRes.data)
+                setClients(clientsRes.data.filter(user => user.role === 'customer'))
                 setProducts(productsRes.data)
             } catch (error) {
                 toast('Ошибка загрузки данных')

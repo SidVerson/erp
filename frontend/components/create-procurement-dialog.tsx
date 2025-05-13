@@ -23,6 +23,7 @@ const formSchema = z.object({
 export function CreateProcurementDialog({ onSuccess }: { onSuccess: (data: Procurement) => void }) {
     const [suppliers, setSuppliers] = useState<Supplier[]>([])
     const [products, setProducts] = useState<Product[]>([])
+    const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
     const [open, setOpen] = useState(false)
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -44,6 +45,16 @@ export function CreateProcurementDialog({ onSuccess }: { onSuccess: (data: Procu
         }
         fetchData()
     }, [])
+
+    useEffect(() => {
+        const supplierId = form.watch('supplierId')
+        if (supplierId) {
+            setFilteredProducts(products.filter(product => product.supplier?.id === supplierId))
+        } else {
+            setFilteredProducts([])
+        }
+        form.setValue('productId', undefined)
+    }, [form.watch('supplierId'), products])
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
@@ -104,14 +115,17 @@ export function CreateProcurementDialog({ onSuccess }: { onSuccess: (data: Procu
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Товар</FormLabel>
-                                    <Select onValueChange={(value) => field.onChange(Number(value))}>
+                                    <Select 
+                                        onValueChange={(value) => field.onChange(Number(value))}
+                                        disabled={!form.watch('supplierId')}
+                                    >
                                         <FormControl>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Выберите товар" />
+                                                <SelectValue placeholder={form.watch('supplierId') ? "Выберите товар" : "Сначала выберите поставщика"} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {products.map(product => (
+                                            {filteredProducts.map(product => (
                                                 <SelectItem key={product.id} value={product.id.toString()}>
                                                     {product.name}
                                                 </SelectItem>
@@ -129,14 +143,16 @@ export function CreateProcurementDialog({ onSuccess }: { onSuccess: (data: Procu
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Количество</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            {...field}
-                                            onChange={e => field.onChange(Number(e.target.value))}
-                                        />
-                                    </FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                {...field}
+                                                onChange={e => field.onChange(Number(e.target.value))}
+                                            />
+                                        </FormControl>
+                                    </div>
                                     <FormMessage />
                                 </FormItem>
                             )}

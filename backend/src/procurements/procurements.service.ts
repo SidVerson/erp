@@ -36,25 +36,27 @@ export class ProcurementsService {
       throw new Error('Supplier or Product not found');
     }
 
+    // Устанавливаем время в полночь по локальному времени
+    const deliveryDate = new Date(createProcurementDto.deliveryDate);
+    const offset = deliveryDate.getTimezoneOffset();
+    deliveryDate.setHours(0, -offset, 0, 0);
+
     const procurement = this.procurementsRepository.create({
       supplier,
       product,
       quantity: createProcurementDto.quantity,
-      deliveryDate: createProcurementDto.deliveryDate,
-      // @ts-ignore
-      delivered: new Date(createProcurementDto.deliveryDate) < Date.now(),
+      deliveryDate: deliveryDate,
+      delivered: deliveryDate <= new Date(),
       unitPrice: product.price,
     });
 
-    const savedProcurement =
-      await this.procurementsRepository.save(procurement);
+    const savedProcurement = await this.procurementsRepository.save(procurement);
 
     // Обновляем ожидаемое количество на складе
     await this.warehouseService.updateExpected(
       createProcurementDto.productId,
       createProcurementDto.quantity,
-      // @ts-ignore
-      new Date(createProcurementDto.deliveryDate) < Date.now(),
+      deliveryDate <= new Date(),
     );
 
     return savedProcurement;
@@ -64,7 +66,19 @@ export class ProcurementsService {
     const procurement = await this.procurementsRepository.findOneBy({ id });
     if (!procurement) throw new Error('Procurement not found');
 
-    procurement.deliveryDate = newDate;
+    // Устанавливаем время в полночь по локальному времени
+    const deliveryDate = new Date(newDate);
+    const offset = deliveryDate.getTimezoneOffset();
+    deliveryDate.setHours(0, -offset, 0, 0);
+    
+    procurement.deliveryDate = deliveryDate;
+    procurement.delivered = deliveryDate <= new Date();
+    
+    // Обновляем статус на складе
+    if (procurement.delivered) {
+        await this.warehouseService.processImmediateDelivery(procurement);
+    }
+    
     return this.procurementsRepository.save(procurement);
   }
 

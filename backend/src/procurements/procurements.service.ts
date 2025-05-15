@@ -41,22 +41,25 @@ export class ProcurementsService {
     const offset = deliveryDate.getTimezoneOffset();
     deliveryDate.setHours(0, -offset, 0, 0);
 
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
     const procurement = this.procurementsRepository.create({
       supplier,
       product,
       quantity: createProcurementDto.quantity,
       deliveryDate: deliveryDate,
-      delivered: deliveryDate <= new Date(),
+      delivered: deliveryDate <= now,
       unitPrice: product.price,
     });
 
     const savedProcurement = await this.procurementsRepository.save(procurement);
 
-    // Обновляем ожидаемое количество на складе
+    // Обновляем количество на складе
     await this.warehouseService.updateExpected(
       createProcurementDto.productId,
       createProcurementDto.quantity,
-      deliveryDate <= new Date(),
+      deliveryDate <= now, // передаем true если дата в прошлом
     );
 
     return savedProcurement;

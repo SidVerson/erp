@@ -8,7 +8,7 @@ import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import api from "@/lib/axios"
 import {toast} from "sonner"
-import {useState} from "react"
+import {useState, useEffect} from "react"
 
 export const columns = ({
                             suppliers,
@@ -33,49 +33,20 @@ export const columns = ({
         cell: ({ row }) => `${Number(row.getValue('price')).toFixed(2)}`
     },
     {
-        accessorKey: "quantity",
-        header: "Количество",
+        accessorKey: "stock",
+        header: "Наличие",
         cell: ({ row }) => {
-            const [quantity, setQuantity] = useState(row.original.quantity || 0)
-            const [isEditing, setIsEditing] = useState(false)
-
-            const handleSave = async (newQuantity: number) => {
-                try {
-                    await api.put(`/products/${row.original.id}/quantity`, { quantity: newQuantity })
-                    setQuantity(newQuantity)
-                    setIsEditing(false)
-                    toast("Количество обновлено")
-                } catch (error) {
-                    toast.error("Ошибка при обновлении количества")
-                }
-            }
-
-            if (isEditing) {
-                return (
-                    <div className="flex gap-2 items-center">
-                        <Input
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(Number(e.target.value))}
-                            className="w-20"
-                            min={0}
-                        />
-                        <Button size="sm" onClick={() => handleSave(quantity)}>
-                            Сохранить
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
-                            Отмена
-                        </Button>
-                    </div>
-                )
-            }
-
+            const stock = row.original.stock
+            if (!stock) return "0 в наличии"
+            
             return (
-                <div className="flex gap-2 items-center">
-                    <span>{quantity}</span>
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
-                        Изменить
-                    </Button>
+                <div>
+                    <span>{stock.inStock || 0} в наличии</span>
+                    {stock.expected > 0 && (
+                        <span className="text-muted-foreground ml-2">
+                            ({stock.expected} ожидается)
+                        </span>
+                    )}
                 </div>
             )
         }
@@ -92,13 +63,6 @@ export const columns = ({
                         suppliers={suppliers}
                         onSuccess={onEditSuccess}
                     />
-                    {/*<Button*/}
-                    {/*    variant="destructive"*/}
-                    {/*    size="sm"*/}
-                    {/*    onClick={() => onDelete(product.id)}*/}
-                    {/*>*/}
-                    {/*    <Trash/>*/}
-                    {/*</Button>*/}
                 </div>
             )
         }
@@ -106,19 +70,47 @@ export const columns = ({
 ]
 
 export function ProductsTable({
-                                  products,
-                                  onEdit,
-                                  onDelete,
-                                  suppliers
-                              }: {
+                                products: initialProducts,
+                                onEdit,
+                                onDelete,
+                                suppliers
+                            }: {
     products: Product[]
     onEdit: (product: Product) => void
     onDelete?: (id: number) => void
     suppliers?: Supplier[]
 }) {
+    const [products, setProducts] = useState<Product[]>(initialProducts)
+
+    useEffect(() => {
+        const fetchStockData = async () => {
+            try {
+                const warehouseRes = await api.get('/warehouse/all')
+                const productsWithStock = initialProducts.map(product => {
+                    const stockInfo = warehouseRes.data.find((item: any) => item.product.id === product.id)
+                    return {
+                        ...product,
+                        stock: {
+                            inStock: stockInfo?.inStock || 0,
+                            expected: stockInfo?.expected || 0
+                        }
+                    }
+                })
+                setProducts(productsWithStock)
+            } catch (error) {
+                toast.error('Ошибка загрузки данных о наличии')
+            }
+        }
+        fetchStockData()
+    }, [initialProducts])
+
     return (
         <DataTable
-            columns={columns({suppliers, onEdit, onDelete})}
+            columns={columns({
+                suppliers: suppliers || [], 
+                onEditSuccess: () => {}, 
+                onDelete: onDelete || (() => {})
+            })}
             data={products}
             onRowClick={onEdit}
             onDelete={onDelete}

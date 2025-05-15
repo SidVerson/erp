@@ -27,6 +27,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {User} from '@/lib/types'
 
 const formSchema = z.object({
     clientId: z.number().min(1, "Выберите клиента"),
@@ -39,7 +40,7 @@ const formSchema = z.object({
 
 export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => void }) {
     const [open, setOpen] = useState(false)
-    const [clients, setClients] = useState<any[]>([])
+    const [clients, setClients] = useState<User[]>([])
     const [products, setProducts] = useState<Product[]>([])
     const [showPurchaseDialog, setShowPurchaseDialog] = useState(false)
     const [insufficientItems, setInsufficientItems] = useState<{productId: number, required: number, available: number}[]>([])
@@ -55,12 +56,25 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [clientsRes, productsRes] = await Promise.all([
+                const [clientsRes, productsRes, warehouseRes] = await Promise.all([
                     api.get('/users?role=customer'),
-                    api.get('/products?includeStock=true')
+                    api.get('/products'),
+                    api.get('/warehouse/all')
                 ])
-                setClients(clientsRes.data.filter(user => user.role === 'customer'))
-                setProducts(productsRes.data)
+                setClients(clientsRes.data.filter((user: User) => user.role === 'customer'))
+                
+                // Объединяем данные о продуктах с данными о складе
+                const productsWithStock = productsRes.data.map((product: Product) => {
+                    const stockInfo = warehouseRes.data.find((item: any) => item.product.id === product.id)
+                    return {
+                        ...product,
+                        stock: {
+                            inStock: stockInfo?.inStock || 0,
+                            expected: stockInfo?.expected || 0
+                        }
+                    }
+                })
+                setProducts(productsWithStock)
             } catch (error) {
                 toast('Ошибка загрузки данных')
             }
@@ -68,30 +82,49 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
         fetchData()
     }, [])
 
-    const createPurchaseOrders = async () => {
+    const fetchStockData = async () => {
         try {
-            for (const item of insufficientItems) {
-                const product = products.find(p => p.id === item.productId)
-                if (product) {
-                    await api.post('/purchases', {
-                        supplierId: product.supplier.id,
-                        items: [{
-                            productId: item.productId,
-                            quantity: item.required - item.available
-                        }]
-                    })
+            const warehouseRes = await api.get('/warehouse/all')
+            const productsWithStock = products.map(product => {
+                const stockInfo = warehouseRes.data.find((item: any) => item.product.id === product.id)
+                return {
+                    ...product,
+                    stock: {
+                        inStock: stockInfo?.inStock || 0,
+                        expected: stockInfo?.expected || 0
+                    }
                 }
-            }
-            toast("Закупки созданы")
-            // Повторяем создание заказа
-            submitOrder(form.getValues())
+            })
+            setProducts(productsWithStock)
         } catch (error) {
-            toast.error("Ошибка при создании закупок")
+            toast.error('Ошибка загрузки данных о наличии')
         }
     }
 
     const submitOrder = async (values: z.infer<typeof formSchema>) => {
         try {
+            // Сначала проверяем достаточно ли товара
+            const insufficientItemsList = values.items.map(item => {
+                const product = products.find(p => p.id === item.productId)
+                const stock = product?.stock?.inStock || 0
+                if (stock < item.quantity) {
+                    return {
+                        productId: item.productId,
+                        required: item.quantity,
+                        available: stock
+                    }
+                }
+                return null
+            }).filter(Boolean) as { productId: number; required: number; available: number }[]
+
+            // Если есть недостающие товары, показываем диалог закупки
+            if (insufficientItemsList.length > 0) {
+                setInsufficientItems(insufficientItemsList)
+                setShowPurchaseDialog(true)
+                return // Прерываем создание заказа
+            }
+
+            // Если все товары в наличии, создаем заказ
             const response = await api.post('/orders', {
                 ...values,
                 shipmentDate: values.shipmentDate.toISOString()
@@ -101,26 +134,32 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
             form.reset()
             toast("Заказ успешно создан")
         } catch (error: any) {
-            if (error.response?.status === 409 && error.response?.data?.message?.includes('Недостаточно товара')) {
-                // Парсим сообщение об ошибке для получения информации о недостающих товарах
-                const items = values.items.map(item => {
-                    const product = products.find(p => p.id === item.productId)
-                    const stock = product?.warehouse?.[0]?.inStock || 0
-                    if (stock < item.quantity) {
-                        return {
-                            productId: item.productId,
-                            required: item.quantity,
-                            available: stock
-                        }
-                    }
-                    return null
-                }).filter(Boolean)
-                
-                setInsufficientItems(items)
-                setShowPurchaseDialog(true)
-            } else {
-                toast.error("Ошибка при создании заказа")
-            }
+            toast.error("Ошибка при создании заказа")
+        }
+    }
+
+    const createPurchaseOrders = async () => {
+        try {
+            const purchasePromises = insufficientItems.map(async (item) => {
+                const product = products.find(p => p.id === item.productId)
+                if (product?.supplier?.id) {
+                    return api.post('/procurements', {
+                        supplierId: product.supplier.id,
+                        productId: item.productId,
+                        quantity: item.required - item.available,
+                        deliveryDate: new Date(new Date().setDate(new Date().getDate()-2))
+                    })
+                }
+            }).filter(Boolean)
+
+            await Promise.all(purchasePromises)
+            toast("Закупки созданы")
+            setShowPurchaseDialog(false)
+            
+            // Обновляем данные о наличии товара
+            await fetchStockData()
+        } catch (error) {
+            toast.error("Ошибка при создании закупок")
         }
     }
 
@@ -210,7 +249,7 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
                             <div className="space-y-4">
                                 <FormLabel>Товары в заказе</FormLabel>
                                 {form.watch('items').map((_, index) => (
-                                    <div key={index} className="flex gap-2 items-start">
+                                    <div key={index} className="flex flex-col gap-2 items-start">
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.productId`}
@@ -234,10 +273,10 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
                                                                         form.getValues('items').some(
                                                                             (item, i) =>
                                                                                 item.productId === product.id && i !== index
-                                                                        ) || (product.warehouse?.[0]?.inStock || 0) === 0
+                                                                        )
                                                                     }
                                                                 >
-                                                                    {product.name} ({product.warehouse?.[0]?.inStock || 0} в наличии)
+                                                                    {product.name} ({product.stock?.inStock || 0} в наличии{product.stock?.expected ? `, ${product.stock.expected} ожидается` : ''})
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>
@@ -269,15 +308,15 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
                                         />
 
                                         <Button
-                                            variant="ghost"
-                                            size="icon"
+                                            variant="destructive"
                                             type="button"
                                             onClick={() => {
                                                 const items = form.getValues('items')
                                                 form.setValue('items', items.filter((_, i) => i !== index))
                                             }}
                                         >
-                                            <Trash className="h-4 w-4 text-red-500" />
+                                            Убрать товар
+                                            <Trash className="text-white" />
                                         </Button>
                                     </div>
                                 ))}
@@ -314,7 +353,7 @@ export function CreateOrderDialog({ onSuccess }: { onSuccess: (order: any) => vo
                                     </div>
                                 )
                             })}
-                            Хотите автоматически создать закупки на недостающее количество?
+                            Хотите создать закупки на недостающее количество? После создания закупок и поступления товара вы сможете создать заказ.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

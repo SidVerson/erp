@@ -62,7 +62,14 @@ export class WarehouseService {
       return this.warehouseRepository.save(newRecord);
     }
 
-    record.expected += quantity;
+    if (isExpected) {
+      // Если дата в прошлом, сразу добавляем в inStock
+      record.inStock += quantity;
+    } else {
+      // Если дата в будущем, добавляем в expected
+      record.expected += quantity;
+    }
+    
     return this.warehouseRepository.save(record);
   }
 

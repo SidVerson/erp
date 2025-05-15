@@ -33,6 +33,7 @@ export interface Product {
     id: number
     name: string
     price: number
+    supplier?: Supplier
     stock?: {
         inStock: number
         expected: number

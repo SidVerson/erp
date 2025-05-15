@@ -58,6 +58,7 @@ export function CreateProcurementDialog({ onSuccess }: { onSuccess: (data: Procu
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
+            console.log(new Date(values.deliveryDate))
             const response = await api.post('/procurements', {
                 ...values,
                 deliveryDate: new Date(values.deliveryDate)
@@ -166,6 +167,7 @@ export function CreateProcurementDialog({ onSuccess }: { onSuccess: (data: Procu
                                     <FormControl>
                                         <Calendar
                                             mode="single"
+                                            // disabled={{ before: new Date() }}
                                             selected={field.value}
                                             onSelect={field.onChange}
                                         />

@@ -28,7 +28,7 @@ export function OrderTable({ data, onStatusChange,  hideActions = false,
         {
             accessorKey: "totalPrice",
             header: "Сумма",
-            cell: ({ row }) => `${row.getValue('totalPrice')} ₽`
+            cell: ({ row }) => `${row.getValue('totalPrice')} BYN`
         },
         {
             accessorKey: "status",

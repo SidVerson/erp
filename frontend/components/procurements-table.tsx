@@ -10,7 +10,6 @@ import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover"
 import api from "@/lib/axios";
 import {toast} from "sonner";
 
-
 export function ProcurementTable({
                                      data,
                                      onDateChange,
@@ -26,6 +25,14 @@ export function ProcurementTable({
             toast.error('Ошибка обновления даты');
         }
     };
+
+    const formatDateWithTimezone = (dateStr: string) => {
+        const date = new Date(dateStr);
+        // Добавляем один день
+        const nextDay = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+        return format(nextDay, 'dd MMMM yyyy', { locale: ru });
+    };
+
     const columns: ColumnDef<Procurement>[] = [
         {
             accessorKey: "supplier.name",
@@ -42,13 +49,13 @@ export function ProcurementTable({
         {
             accessorKey: "deliveryDate",
             header: "Дата приёмки",
-            cell: ({ row, table }) => {
+            cell: ({ row }) => {
                 const procurement = row.original
                 return (
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost">
-                                {format(new Date(procurement.deliveryDate), 'dd MMMM yyyy', { locale: ru })}
+                                {formatDateWithTimezone(procurement.deliveryDate)}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
